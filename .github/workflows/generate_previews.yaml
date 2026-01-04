@@ -1,0 +1,41 @@
+name: Generate Previews JSON
+
+on:
+  schedule:
+    # 每天UTC时间01:00运行（避免与下载任务冲突）
+    - cron: '0 1 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: main
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        
+    - name: Generate previews.json
+      run: |
+        python scripts/generate_previews.py
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add previews.json
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "ci: Update previews.json"
+          git push
+        fi
