@@ -1,0 +1,40 @@
+name: Download Chart Previews
+
+on:
+  schedule:
+    # 每天UTC时间00:00运行
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        
+    - name: Install dependencies
+      run: |
+        pip install requests
+        
+    - name: Run download script
+      run: |
+        python main.py
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add -A
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "ci: Daily update chart previews"
+          git push
+        fi
