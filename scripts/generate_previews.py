@@ -10,9 +10,6 @@ from collections import defaultdict
 # 支持的图片格式
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
-# GitHub 仓库信息
-GITHUB_REPO_URL = "https://raw.githubusercontent.com/KirisameVanilla/chart-preview-database/refs/heads/main"
-
 
 def parse_filename(filename: str) -> tuple[int, int] | None:
     """
@@ -112,7 +109,7 @@ def scan_charts_directory(charts_dir: Path) -> dict:
             # 生成 URL 列表
             urls = []
             for _, filename in files:
-                url = f"{GITHUB_REPO_URL}/charts/{chart_id}/{filename}"
+                url = f"https://cdn.ourtaiko.org/api/preview/{chart_id}/{filename}"
                 urls.append(url)
 
             difficulties[str(difficulty)] = urls
@@ -139,7 +136,7 @@ def main():
 
     # 写入 JSON 文件
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(previews_data, f, ensure_ascii=False, indent=4)
+        json.dump(previews_data, f, ensure_ascii=False)
 
     print(f"已生成 {output_file}")
 
