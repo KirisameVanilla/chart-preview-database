@@ -4,6 +4,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import threading
+import hashlib
 
 
 # 为imgur设置速率限制
@@ -16,8 +17,22 @@ stats_lock = threading.Lock()
 failed_downloads = []  # 记录失败的下载 (url, reason)
 
 
+def calculate_hash(content):
+    """计算内容的SHA256 hash值"""
+    return hashlib.sha256(content).hexdigest()
+
+
+def get_file_hash(file_path):
+    """计算文件的SHA256 hash值"""
+    try:
+        with open(file_path, "rb") as f:
+            return calculate_hash(f.read())
+    except:
+        return None
+
+
 def download_image(url, save_path):
-    """下载图片到指定路径，支持重试机制"""
+    """下载图片到指定路径，支持重试机制和hash比较"""
     max_retries = 3
     retry_delay = 2  # 初始重试延迟（秒）
 
@@ -36,9 +51,19 @@ def download_image(url, save_path):
 
             response = requests.get(url, timeout=30)
             response.raise_for_status()
+            new_content = response.content
 
+            # 如果文件已存在，检查hash是否相同
+            if os.path.exists(save_path):
+                existing_hash = get_file_hash(save_path)
+                new_hash = calculate_hash(new_content)
+                if existing_hash == new_hash:
+                    # 文件内容相同，跳过
+                    return "skipped", None
+
+            # 文件不存在或内容不同，写入文件
             with open(save_path, "wb") as f:
-                f.write(response.content)
+                f.write(new_content)
             return True, None
 
         except requests.exceptions.HTTPError as e:
@@ -94,6 +119,7 @@ def process_song(song, base_dir, difficulty_mapping):
 
     success_count = 0
     failed_count = 0
+    skipped_count = 0
 
     # 遍历难度映射
     for difficulty_key, difficulty_value in difficulty_mapping.items():
@@ -104,7 +130,7 @@ def process_song(song, base_dir, difficulty_mapping):
             images = course_data.get("images", [])
 
             # 下载每个图片
-            for image_url in images:
+            for idx, image_url in enumerate(images):
                 if not image_url:
                     continue
 
@@ -113,18 +139,31 @@ def process_song(song, base_dir, difficulty_mapping):
                     # 从URL中提取扩展名
                     url_path = image_url.split("?")[0]  # 去掉查询参数
                     extension = os.path.splitext(url_path)[1] or ".jpg"
+                    if extension.lower() not in [
+                        ".jpg",
+                        ".jpeg",
+                        ".png",
+                        ".gif",
+                        ".bmp",
+                        ".webp",
+                    ]:
+                        extension = ".jpg"
                 except:
                     extension = ".jpg"
 
-                # 生成唯一文件名
-                save_path = get_unique_filename(
-                    song_dir, str(difficulty_value), extension
-                )
+                # 生成文件名（如果有多个图片，添加索引后缀）
+                if idx == 0:
+                    filename = f"{difficulty_value}{extension}"
+                else:
+                    filename = f"{difficulty_value}_{idx + 1}{extension}"
+                save_path = song_dir / filename
 
                 # 下载图片
-                success, error = download_image(image_url, save_path)
-                if success:
+                result, error = download_image(image_url, save_path)
+                if result is True:
                     success_count += 1
+                elif result == "skipped":
+                    skipped_count += 1
                 else:
                     failed_count += 1
                     with stats_lock:
@@ -132,7 +171,7 @@ def process_song(song, base_dir, difficulty_mapping):
                             {"song_no": song_no, "url": image_url, "reason": error}
                         )
 
-    return {"success": success_count, "failed": failed_count, "skipped": 0}
+    return {"success": success_count, "failed": failed_count, "skipped": skipped_count}
 
 
 def main():
@@ -155,7 +194,7 @@ def main():
         return
 
     # 2. 使用多线程处理歌曲下载
-    max_workers = 5  # 同时下载的歌曲数量
+    max_workers = 10  # 同时下载的歌曲数量
     total_success = 0
     total_failed = 0
     total_skipped = 0
@@ -205,9 +244,8 @@ def main():
     print("下载完成！")
     print("=" * 60)
     print(f"✓ 成功下载: {total_success} 张图片")
+    print(f"⊙ 跳过相同: {total_skipped} 张图片")
     print(f"✗ 下载失败: {total_failed} 张图片")
-    if total_skipped > 0:
-        print(f"⊘ 跳过歌曲: {total_skipped} 首")
 
     # 输出失败详情
     if failed_downloads:
