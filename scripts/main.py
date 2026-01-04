@@ -72,6 +72,8 @@ def main():
         for difficulty_key, difficulty_value in difficulty_mapping.items():
             if difficulty_key in courses:
                 course_data = courses[difficulty_key]
+                if course_data is None:
+                    continue
                 images = course_data.get("images", [])
 
                 print(f"  Found {len(images)} images for {difficulty_key}")
