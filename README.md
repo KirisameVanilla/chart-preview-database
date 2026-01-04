@@ -4,5 +4,53 @@
 
 ## API
 
-`https://cdn.ourtaiko.org/api/previews` -> Get the previews.json  
-`https://cdn.ourtaiko.org/api/preview/id/filename` -> Get the pic file
+- `/api/previews` -> Get the previews.json  
+    Call: `/api/previews`
+
+    Return:
+
+    ``` json
+    {
+        "1": {
+            "1": [
+                "https://cdn.ourtaiko.org/api/preview/1/1.jpg"
+                ],
+            "2": [
+                "https://cdn.ourtaiko.org/api/preview/1/2.jpg"
+                ],
+            "3": [
+                "https://cdn.ourtaiko.org/api/preview/1/3.jpg"
+                ],
+            "4": [
+                "https://cdn.ourtaiko.org/api/preview/1/4.jpg"
+                ],
+            "5": []
+        },
+        ...
+    }
+    ```
+
+- `/api/preview/id` -> Get a specific song's previews json  
+    Call: `/api/preview/1`
+
+    Return:
+
+    ``` json
+    {
+        "1": [
+            "https://cdn.ourtaiko.org/api/preview/1/1.jpg"
+            ],
+        "2": [
+            "https://cdn.ourtaiko.org/api/preview/1/2.jpg"
+            ],
+        "3": [
+            "https://cdn.ourtaiko.org/api/preview/1/3.jpg"
+            ],
+        "4": [
+            "https://cdn.ourtaiko.org/api/preview/1/4.jpg"
+            ],
+        "5": []
+    }
+    ```
+
+- `/api/preview/id/filename` -> Get the pic file
